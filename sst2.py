@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 from collections import Counter
 import time
 import torch
-from torch.ao.quantization.quantize_fx import prepare_fx, convert_fx, prepare_qat_fx
+from torch.quantization.quantize_fx import prepare_fx, convert_fx, prepare_qat_fx
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
 class SST2Dataset(Dataset):
@@ -196,15 +196,15 @@ hidden_size = 256
 model = FeedForwardNN(50, hidden_size)
 # train(model)
 print_size_of_model(model, "float32")
-dynamic_model = torch.ao.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+dynamic_model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
 # train(model)
 print_size_of_model(dynamic_model, "int8 dynamic_model")
-static_model = prepare_fx(model, {"": torch.ao.quantization.default_qconfig}, example_inputs=next(iter(train_loader))[0])
+static_model = prepare_fx(model, {"": torch.quantization.default_qconfig}, example_inputs=next(iter(train_loader))[0])
 train(static_model, calibrate=True)
 model = convert_fx(static_model)
 print_size_of_model(static_model, "int8 (FX)")
 # train(model)
-# model = torch.ao.quantization.quantize_fx.prepare_qat_fx
+# model = torch.quantization.quantize_fx.prepare_qat_fx
 
 
 
