@@ -12,7 +12,7 @@ from torch.quantization.quantize_fx import prepare_fx, convert_fx, prepare_qat_f
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
 class SST2Dataset(Dataset):
-    def __init__(self, file_path, vocab=None, max_vocab_size=10000, test_mode=False):
+    def __init__(self, file_path, vocab=None, max_vocab_size=5000, test_mode=False):
         self.data = pd.read_csv(file_path, sep='\t', header
         ='infer')
         self.sentences = self.data['sentence'].tolist()
@@ -72,11 +72,11 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=2, calibra
 
 import os
 
-def print_size_of_model(model, label=""):
-    torch.save(model.state_dict(), "temp.p")
-    size=os.path.getsize("temp.p")
+def save_model(model, label=""):
+    torch.save(model, "temp.pth")
+    size=os.path.getsize("temp.pth")
     print("model: ",label,' \t','Size (MB):', size/1e6)
-    os.remove('temp.p')
+    # os.remove('temp.pth')
     return size
 
 from torch.nn.utils.rnn import pad_sequence
@@ -108,13 +108,16 @@ class FeedForwardNN(nn.Module):
     def __init__(self, vocab_size, hidden_size=256):
         super(FeedForwardNN, self).__init__()
         self.fc1 = nn.Linear(vocab_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, 1)  # Binary classification
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, 1)  # Binary classification
         self.relu = nn.ReLU()
     
     def forward(self, x):
         out = self.fc1(x)
         out = self.relu(out)
         out = self.fc2(out)
+        out = self.relu(out)
+        out = self.fc3(out)
         return out
 
 def evaluate_model(model, data_loader):
@@ -166,7 +169,7 @@ def train(model, calibrate=False):
     num_epochs = 5
 
     # Load dataset and dataloaders
-    train_dataset = SST2Dataset('data/SST-2/train.tsv', max_vocab_size=10000)
+    train_dataset = SST2Dataset('data/SST-2/train.tsv', max_vocab_size=5000)
     test_dataset = SST2Dataset('data/SST-2/dev.tsv', vocab=train_dataset.vocab)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn_fixed_length)
@@ -189,20 +192,23 @@ def train(model, calibrate=False):
     # calculate_flops(model, vocab_size)
     print(f'Total Parameters: {count_parameters(model)}')
 
-train_dataset = SST2Dataset('data/SST-2/train.tsv', max_vocab_size=10000)
+train_dataset = SST2Dataset('data/SST-2/train.tsv', max_vocab_size=5000)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, collate_fn=collate_fn_fixed_length)
 
 hidden_size = 256
-model = FeedForwardNN(50, hidden_size)
+# model = FeedForwardNN(50, hidden_size)
 # train(model)
-print_size_of_model(model, "float32")
-dynamic_model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
-# train(model)
-print_size_of_model(dynamic_model, "int8 dynamic_model")
-static_model = prepare_fx(model, {"": torch.quantization.default_qconfig}, example_inputs=next(iter(train_loader))[0])
-train(static_model, calibrate=True)
-model = convert_fx(static_model)
-print_size_of_model(static_model, "int8 (FX)")
+# save_model(model, "float32")
+
+model = torch.load("temp.pth")
+evaluate_model(model, train_loader)
+# dynamic_model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+# train(dynamic_model)
+# save_model(dynamic_model, "int8 dynamic_model")
+# static_model = prepare_fx(model, {"": torch.quantization.default_qconfig}, example_inputs=next(iter(train_loader))[0])
+# train(static_model, calibrate=True)
+# model = convert_fx(static_model)
+# save_model(static_model, "int8 (FX)")
 # train(model)
 # model = torch.quantization.quantize_fx.prepare_qat_fx
 
