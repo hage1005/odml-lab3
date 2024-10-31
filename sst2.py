@@ -82,7 +82,7 @@ def save_model(model, label=""):
 from torch.nn.utils.rnn import pad_sequence
 import torch
 
-def collate_fn_fixed_length(batch, max_length=50):
+def collate_fn_fixed_length(batch, max_length=5000):
     sentences, labels = zip(*batch)
     
     # Convert each sentence to a tensor and pad/truncate to max_length
@@ -196,11 +196,11 @@ train_dataset = SST2Dataset('data/SST-2/train.tsv', max_vocab_size=5000)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, collate_fn=collate_fn_fixed_length)
 
 hidden_size = 256
-# model = FeedForwardNN(50, hidden_size)
-# train(model)
+model = FeedForwardNN(5000, hidden_size)
+train(model)
 # dynamic_model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
 # save_model(dynamic_model, "int8 dynamic_model")
-model = torch.load("temp.pth")
+# model = torch.load("temp.pth")
 evaluate_model(model, train_loader)
 # train(dynamic_model)
 # static_model = prepare_fx(model, {"": torch.quantization.default_qconfig}, example_inputs=next(iter(train_loader))[0])
