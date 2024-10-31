@@ -198,13 +198,11 @@ train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, collate_fn=
 hidden_size = 256
 # model = FeedForwardNN(50, hidden_size)
 # train(model)
-# save_model(model, "float32")
-
+# dynamic_model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+# save_model(dynamic_model, "int8 dynamic_model")
 model = torch.load("temp.pth")
 evaluate_model(model, train_loader)
-# dynamic_model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
 # train(dynamic_model)
-# save_model(dynamic_model, "int8 dynamic_model")
 # static_model = prepare_fx(model, {"": torch.quantization.default_qconfig}, example_inputs=next(iter(train_loader))[0])
 # train(static_model, calibrate=True)
 # model = convert_fx(static_model)
